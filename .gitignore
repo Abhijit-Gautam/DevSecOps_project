@@ -1,0 +1,11 @@
+# Runtime/generated data
+Academic Report Evaluator/uploads/
+Academic Report Evaluator/downloads/
+
+# Large ML artifacts (not suitable for regular GitHub git storage)
+Academic Report Evaluator/models/
+Academic Report Evaluator/roberta-base/checkpoint-*/
+*.gguf
+*.safetensors
+*.pt
+*.pth

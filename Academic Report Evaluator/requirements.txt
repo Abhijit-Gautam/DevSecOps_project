@@ -1,0 +1,27 @@
+# Core scientific/ML dependencies
+torch
+transformers
+gpt4all
+
+# Flask and web
+Flask
+werkzeug
+
+# File and document processing
+python-docx
+pdf2docx
+docx2pdf
+PyMuPDF
+
+# Data and Excel
+pandas
+openpyxl
+
+# HTTP requests
+requests
+
+# For Windows COM interface (for docx2pdf)
+pywin32
+
+# (Optional) for extra Unicode safety
+unicodedata2; python_version < '3.8'
