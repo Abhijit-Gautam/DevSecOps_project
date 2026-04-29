@@ -67,7 +67,7 @@ class BaseAgent:
             raw = self._fallback_evaluation(report_text, parsed_data)
 
         # Guarantee list fields are always actual lists — LLM may return null/string
-        for field in ("strengths", "weaknesses", "evidence", "recommendations"):
+        for field in ("strengths", "weaknesses", "evidence", "recommendations", "issues", "suggestions"):
             val = raw.get(field)
             raw[field] = val if isinstance(val, list) else []
 

@@ -180,12 +180,23 @@ def _init_services(app: Flask):
     else:
         logger.warning("Ollama not reachable — LLM features will be degraded.")
 
-    # ── 4. Orchestrator ───────────────────────────────────────────────────
+    # ── 4. Groq VLM client ────────────────────────────────────────────────
+    from .utils.groq_vlm_client import GroqVLMClient
+    groq_vlm = GroqVLMClient(
+        api_key=cfg.get("GROQ_API_KEY"),
+        model=cfg["GROQ_VLM_MODEL"],
+        timeout=cfg["GROQ_TIMEOUT"],
+    )
+    if not groq_vlm.is_available():
+        logger.warning("GROQ_API_KEY not configured — DiagramAgent will report unavailable when images are present.")
+
+    # ── 5. Orchestrator ───────────────────────────────────────────────────
     logger.info("Wiring up orchestrator...")
     from .agents.orchestrator import AgentOrchestrator
     orchestrator = AgentOrchestrator(
         roberta_model=roberta,
         ollama_client=ollama,
+        groq_vlm_client=groq_vlm,
         srlm_rounds=cfg["SRLM_ROUNDS"],
     )
     cfg["_orchestrator"] = orchestrator

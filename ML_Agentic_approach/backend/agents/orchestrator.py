@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 class AgentOrchestrator:
-    def __init__(self, roberta_model, ollama_client, srlm_rounds: int = 2):
+    def __init__(self, roberta_model, ollama_client, groq_vlm_client=None, srlm_rounds: int = 2):
         from .specialized_agents import build_all_agents
         from .master_arbiter import MasterArbiter
         from ..xai.explainer import XAIExplainer
@@ -36,9 +36,10 @@ class AgentOrchestrator:
 
         self.roberta = roberta_model
         self.ollama = ollama_client
+        self.groq_vlm = groq_vlm_client
         self.srlm_rounds = srlm_rounds
 
-        self.agents = build_all_agents(ollama_client)
+        self.agents = build_all_agents(ollama_client, groq_vlm_client)
         self.arbiter = MasterArbiter(ollama_client)
         self.explainer = XAIExplainer(roberta_model, ollama_client)
         self.fol_verifier = FOLVerifier()
@@ -51,6 +52,7 @@ class AgentOrchestrator:
         run_highlights: bool = True,
         run_fol: bool = True,
         run_xai: bool = True,
+        diagram_images: Optional[List[str]] = None,
         step_callback=None,  # callable(event: str, data: dict) — for SSE streaming
     ) -> Dict[str, Any]:
         """
@@ -95,9 +97,10 @@ class AgentOrchestrator:
         # ── Step 3: Round 1 — independent agent evaluations ──────────────
         agent_evaluations: List[Dict] = []
         if run_srlm:
+            agent_context = {"diagram_images": diagram_images or []}
             for agent in self.agents:
                 try:
-                    ev = agent.evaluate(report_text, parsed_data)
+                    ev = agent.evaluate(report_text, parsed_data, agent_context)
                     agent_evaluations.append(ev)
                     log_step(f"agent_r1_{agent.name}", {"verdict": ev.get("verdict")})
                 except Exception as e:

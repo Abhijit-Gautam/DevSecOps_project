@@ -27,6 +27,11 @@ class Config:
     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3:latest")
     OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "180"))  # seconds
 
+    # ── Groq VLM (DiagramAgent) ──────────────────────────────────────────────
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    GROQ_VLM_MODEL = os.getenv("GROQ_VLM_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct")
+    GROQ_TIMEOUT = int(os.getenv("GROQ_TIMEOUT", "60"))
+
     # ── Storage ──────────────────────────────────────────────────────────────
     DB_PATH = os.getenv(
         "DB_PATH", str(BASE_DIR / "backend" / "storage" / "reports.db")

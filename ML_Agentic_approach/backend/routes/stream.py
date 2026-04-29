@@ -41,6 +41,7 @@ from flask import Blueprint, Response, current_app, request, stream_with_context
 
 from ..utils.text_processor import normalize_text, read_bytes_text
 from ..utils.report_parser import parse_report, parsed_report_to_dict
+from ..utils.diagram_extractor import extract_diagram_images
 
 logger = logging.getLogger(__name__)
 stream_bp = Blueprint("stream", __name__)
@@ -59,18 +60,24 @@ STEP_MESSAGES = {
     "agent_r1_CitationAgent":  ("CitationAgent evaluated citations & literature", "📚"),
     "agent_r1_DocumentStructureAgent": ("DocumentStructureAgent evaluated formatting", "📄"),
     "agent_r1_ContentDepthAgent": ("ContentDepthAgent evaluated academic rigour", "🎓"),
+    "agent_r1_DiagramAgent": ("DiagramAgent evaluated report visuals", "🖼️"),
+    "agent_r1_FormatterAgent": ("FormatterAgent evaluated layout consistency", "📐"),
     "self_reward_AbstractAgent": ("AbstractAgent self-assessed its reasoning quality", "⭐"),
     "self_reward_MethodologyAgent": ("MethodologyAgent self-assessed its reasoning quality", "⭐"),
     "self_reward_ResultsAgent": ("ResultsAgent self-assessed its reasoning quality", "⭐"),
     "self_reward_CitationAgent": ("CitationAgent self-assessed its reasoning quality", "⭐"),
     "self_reward_DocumentStructureAgent": ("DocumentStructureAgent self-assessed quality", "⭐"),
     "self_reward_ContentDepthAgent": ("ContentDepthAgent self-assessed quality", "⭐"),
+    "self_reward_DiagramAgent": ("DiagramAgent self-assessed quality", "⭐"),
+    "self_reward_FormatterAgent": ("FormatterAgent self-assessed quality", "⭐"),
     "cross_review_AbstractAgent": ("AbstractAgent reviewed peer evaluation", "🔄"),
     "cross_review_MethodologyAgent": ("MethodologyAgent reviewed peer evaluation", "🔄"),
     "cross_review_ResultsAgent": ("ResultsAgent reviewed peer evaluation", "🔄"),
     "cross_review_CitationAgent": ("CitationAgent reviewed peer evaluation", "🔄"),
     "cross_review_DocumentStructureAgent": ("DocumentStructureAgent reviewed peer", "🔄"),
     "cross_review_ContentDepthAgent": ("ContentDepthAgent reviewed peer evaluation", "🔄"),
+    "cross_review_DiagramAgent": ("DiagramAgent reviewed peer evaluation", "🔄"),
+    "cross_review_FormatterAgent": ("FormatterAgent reviewed peer evaluation", "🔄"),
     "master_arbiter":          ("Master Arbiter synthesised all agent verdicts", "⚖️"),
     "fol_verification":        ("FOL axiom verification complete", "🔏"),
     "xai_explanation":         ("XAI explanations generated", "💡"),
@@ -82,12 +89,15 @@ STEP_ORDER = [
     "agent_r1_AbstractAgent", "agent_r1_MethodologyAgent",
     "agent_r1_ResultsAgent", "agent_r1_CitationAgent",
     "agent_r1_DocumentStructureAgent", "agent_r1_ContentDepthAgent",
+    "agent_r1_DiagramAgent", "agent_r1_FormatterAgent",
     "self_reward_AbstractAgent", "self_reward_MethodologyAgent",
     "self_reward_ResultsAgent", "self_reward_CitationAgent",
     "self_reward_DocumentStructureAgent", "self_reward_ContentDepthAgent",
+    "self_reward_DiagramAgent", "self_reward_FormatterAgent",
     "cross_review_AbstractAgent", "cross_review_MethodologyAgent",
     "cross_review_ResultsAgent", "cross_review_CitationAgent",
     "cross_review_DocumentStructureAgent", "cross_review_ContentDepthAgent",
+    "cross_review_DiagramAgent", "cross_review_FormatterAgent",
     "master_arbiter", "fol_verification", "xai_explanation", "complete",
 ]
 TOTAL_STEPS = len(STEP_ORDER)
@@ -145,6 +155,7 @@ def evaluate_stream():
     # ── Parse request ────────────────────────────────────────────────────
     report_text = ""
     filename = "stream_input.txt"
+    diagram_images: list[str] = []
 
     if request.content_type and "multipart" in request.content_type:
         file = request.files.get("file")
@@ -158,7 +169,9 @@ def evaluate_stream():
                 yield _sse("error", {"message": f"Unsupported file type '{ext}'."})
             return Response(stream_with_context(_bad_ext()), mimetype="text/event-stream")
         filename = file.filename
-        report_text = read_bytes_text(file.read(), filename)
+        file_bytes = file.read()
+        report_text = read_bytes_text(file_bytes, filename)
+        diagram_images = extract_diagram_images(file_bytes, filename)
         run_srlm = request.form.get("run_srlm", "true").lower() != "false"
         run_highlights = request.form.get("run_highlights", "true").lower() != "false"
         run_fol = request.form.get("run_fol", "true").lower() != "false"
@@ -202,6 +215,7 @@ def evaluate_stream():
                 run_highlights=run_highlights,
                 run_fol=run_fol,
                 run_xai=run_xai,
+                diagram_images=diagram_images,
                 step_callback=_callback,
             )
 

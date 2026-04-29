@@ -7,9 +7,76 @@ Together they form the SRLM multi-agent judging panel.
 from __future__ import annotations
 
 import json
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .base_agent import BaseAgent
+
+
+DIAGRAM_SYSTEM_PROMPT = """
+You are DiagramAgent, a strict academic report diagram evaluator.
+Evaluate only visual diagrams, figures, charts, workflows, architecture drawings,
+and their nearby captions/context. Do not infer quality from writing alone.
+
+Preset evaluation parameters:
+- relevance_to_report: 25%
+- technical_correctness: 25%
+- visual_clarity: 20%
+- labels_and_legends: 15%
+- usefulness_to_reader: 15%
+
+Return only valid JSON with exactly these keys:
+{
+  "score": float from 0 to 10,
+  "pass/fail": "pass" or "fail",
+  "issues": list of strings,
+  "explanation": "concise evidence-based explanation",
+  "suggestions": list of strings
+}
+Pass requires score >= 6.0 and no severe correctness issue.
+"""
+
+
+def _verdict_from_score(score: Any) -> str:
+    try:
+        value = float(score)
+    except (TypeError, ValueError):
+        return "Needs Improvement"
+    if value >= 8:
+        return "Excellent"
+    if value >= 6:
+        return "Good"
+    return "Needs Improvement"
+
+
+def _normalise_compact_result(raw: Optional[Dict], agent_name: str) -> Dict:
+    raw = raw or {}
+    score = raw.get("score", 0)
+    pass_fail = raw.get("pass_fail") or raw.get("pass/fail")
+    if pass_fail not in {"pass", "fail"}:
+        try:
+            pass_fail = "pass" if float(score) >= 6.0 else "fail"
+        except (TypeError, ValueError):
+            pass_fail = "fail"
+    issues = raw.get("issues")
+    suggestions = raw.get("suggestions")
+    explanation = raw.get("explanation") or raw.get("reasoning") or ""
+    return {
+        "agent": agent_name,
+        "round": 1,
+        "score": score,
+        "max_score": 10,
+        "pass_fail": pass_fail,
+        "pass/fail": pass_fail,
+        "verdict": _verdict_from_score(score),
+        "issues": issues if isinstance(issues, list) else [],
+        "explanation": explanation,
+        "reasoning": explanation,
+        "suggestions": suggestions if isinstance(suggestions, list) else [],
+        "evidence": raw.get("evidence", []) if isinstance(raw.get("evidence"), list) else [],
+        "strengths": raw.get("strengths", []) if isinstance(raw.get("strengths"), list) else [],
+        "weaknesses": issues if isinstance(issues, list) else [],
+        "recommendations": suggestions if isinstance(suggestions, list) else [],
+    }
 
 
 class AbstractAgent(BaseAgent):
@@ -296,9 +363,155 @@ Return JSON:
 """
 
 
+class DiagramAgent(BaseAgent):
+    name = "DiagramAgent"
+    role = "Diagram, Figure & Visual Evidence Evaluator"
+    focus_areas = [
+        "diagram relevance",
+        "technical correctness",
+        "visual clarity",
+        "labels and legends",
+        "reader usefulness",
+    ]
+
+    def __init__(self, ollama_client, groq_vlm_client=None):
+        super().__init__(ollama_client)
+        self.groq_vlm = groq_vlm_client
+
+    def evaluate(
+        self,
+        report_text: str,
+        parsed_data: Optional[Dict] = None,
+        context: Optional[Dict] = None,
+    ) -> Dict:
+        context = context or {}
+        parsed_data = parsed_data or {}
+        images = context.get("diagram_images") or parsed_data.get("diagram_images") or []
+        if not images:
+            return _normalise_compact_result(
+                {
+                    "score": 0,
+                    "pass/fail": "fail",
+                    "issues": ["No diagram images were available for VLM evaluation."],
+                    "explanation": "DiagramAgent requires extracted diagram or figure images to judge visual relevance, correctness, clarity, labels, and usefulness.",
+                    "suggestions": ["Upload a PDF or DOCX containing extractable figures, diagrams, or charts."],
+                },
+                self.name,
+            )
+
+        prompt = self._build_evaluation_prompt(report_text, parsed_data, context)
+        if self.groq_vlm and hasattr(self.groq_vlm, "generate_json_with_images"):
+            raw = self.groq_vlm.generate_json_with_images(
+                prompt=prompt,
+                image_urls=images,
+                system=DIAGRAM_SYSTEM_PROMPT,
+                temperature=0.1,
+                max_tokens=900,
+            )
+        else:
+            raw = self._fallback_evaluation(report_text, parsed_data)
+        return _normalise_compact_result(raw, self.name)
+
+    def _system_prompt(self) -> str:
+        return DIAGRAM_SYSTEM_PROMPT
+
+    def _build_evaluation_prompt(self, report_text: str, parsed_data: Dict, context: Dict) -> str:
+        return f"""
+Evaluate the report diagrams using the provided image input.
+
+Report context:
+{report_text[:2000]}
+
+Parsed document quality:
+{json.dumps(parsed_data.get("document_quality", {}), indent=2)}
+
+Use the preset evaluation parameters from the system prompt. Return only the required JSON.
+"""
+
+    def _fallback_evaluation(self, report_text: str, parsed_data: Optional[Dict]) -> Dict:
+        return {
+            "score": 0,
+            "pass_fail": "fail",
+            "pass/fail": "fail",
+            "issues": ["Groq VLM client was unavailable or did not return valid JSON."],
+            "explanation": "Visual diagram assessment could not be completed.",
+            "suggestions": ["Configure GROQ_API_KEY and retry with image-bearing report input."],
+        }
+
+
+class FormatterAgent(BaseAgent):
+    name = "FormatterAgent"
+    role = "Formatting & Layout Evaluator"
+    focus_areas = [
+        "font consistency",
+        "bold headings",
+        "spacing",
+        "margins",
+        "alignment",
+        "formatting consistency",
+    ]
+
+    def _system_prompt(self) -> str:
+        return """
+You are FormatterAgent, a strict academic report formatting evaluator.
+Evaluate formatting only: font consistency, bold/clear headings, spacing, margins,
+alignment, indentation, and consistency across the document.
+
+Return only valid JSON with exactly these keys:
+{
+  "score": float from 0 to 10,
+  "pass/fail": "pass" or "fail",
+  "issues": list of strings,
+  "explanation": "concise evidence-based explanation",
+  "suggestions": list of strings
+}
+Pass requires score >= 6.0.
+"""
+
+    def evaluate(
+        self,
+        report_text: str,
+        parsed_data: Optional[Dict] = None,
+        context: Optional[Dict] = None,
+    ) -> Dict:
+        raw = self.ollama.generate_json(
+            prompt=self._build_evaluation_prompt(report_text, parsed_data or {}, context or {}),
+            system=self._system_prompt(),
+            temperature=0.2,
+        )
+        if not raw:
+            raw = self._fallback_evaluation(report_text, parsed_data)
+        return _normalise_compact_result(raw, self.name)
+
+    def _build_evaluation_prompt(self, report_text: str, parsed_data: Dict, context: Dict) -> str:
+        dq = parsed_data.get("document_quality", {})
+        return f"""
+Evaluate the report formatting.
+
+Document quality metadata:
+{json.dumps(dq, indent=2)}
+
+REPORT TEXT:
+{report_text[:3000]}
+
+Check font, bold headings, spacing, margins, alignment, and consistency.
+Return only the required JSON.
+"""
+
+    def _fallback_evaluation(self, report_text: str, parsed_data: Optional[Dict]) -> Dict:
+        return {
+            "score": 0,
+            "pass_fail": "fail",
+            "pass/fail": "fail",
+            "issues": ["Formatting evaluation model did not return valid JSON."],
+            "explanation": "Unable to evaluate formatting reliably.",
+            "suggestions": ["Retry once the text LLM service is available."],
+        }
+
+
 # ── Factory ───────────────────────────────────────────────────────────────────
 
-def build_all_agents(ollama_client) -> List[BaseAgent]:
+def build_all_agents(ollama_client, groq_vlm_client=None) -> List[BaseAgent]:
     """Instantiate the full panel of specialist agents."""
     return [
         AbstractAgent(ollama_client),
@@ -307,4 +520,6 @@ def build_all_agents(ollama_client) -> List[BaseAgent]:
         CitationAgent(ollama_client),
         DocumentStructureAgent(ollama_client),
         ContentDepthAgent(ollama_client),
+        DiagramAgent(ollama_client, groq_vlm_client),
+        FormatterAgent(ollama_client),
     ]

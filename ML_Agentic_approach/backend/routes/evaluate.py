@@ -17,6 +17,7 @@ from flask import Blueprint, current_app, jsonify, request
 
 from ..utils.text_processor import normalize_text, read_bytes_text
 from ..utils.report_parser import parse_report, parsed_report_to_dict
+from ..utils.diagram_extractor import extract_diagram_images
 
 logger = logging.getLogger(__name__)
 evaluate_bp = Blueprint("evaluate", __name__)
@@ -41,6 +42,7 @@ def _run_pipeline(
     run_highlights: bool,
     run_fol: bool,
     run_xai: bool,
+    diagram_images: list[str] | None = None,
 ) -> Dict[str, Any]:
     """Execute the full analysis pipeline and persist to DB."""
     orchestrator, db = _get_services()
@@ -62,6 +64,7 @@ def _run_pipeline(
             run_highlights=run_highlights,
             run_fol=run_fol,
             run_xai=run_xai,
+            diagram_images=diagram_images,
         )
         elapsed = round((time.time() - t0) * 1000)
 
@@ -230,9 +233,10 @@ def evaluate_upload():
     run_xai = request.form.get("run_xai", "true").lower() != "false"
 
     normalized = normalize_text(text)
+    diagram_images = extract_diagram_images(file_bytes, filename)
 
     try:
-        result = _run_pipeline(normalized, filename, run_srlm, run_highlights, run_fol, run_xai)
+        result = _run_pipeline(normalized, filename, run_srlm, run_highlights, run_fol, run_xai, diagram_images)
         return jsonify(result), 200
     except Exception as e:
         logger.exception("evaluate_upload failed")
