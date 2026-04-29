@@ -1,0 +1,19 @@
+Academic Report Evaluation Summary
+Domain: Cybersecurity
+
+Total Score: 18/20
+
+Abstract:
+This project discusses intrusion detection systems in networks.
+
+Methodology:
+We designed a rule-based system and evaluated it using simulated attack scenarios.
+
+Results:
+The system detected 95% of attacks.
+
+Conclusion:
+The proposed system is highly effective.
+
+References:
+IEEE Papers

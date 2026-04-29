@@ -1,0 +1,37 @@
+Academic Report Evaluation Summary
+Domain: Machine Learning
+Total Score: 15/20
+
+Abstract: 2/2
+Feedback: The abstract clearly states the research objective — predicting student dropout using ensemble methods. The methodology and key findings (84% accuracy) are summarised concisely. The abstract is self-contained and informative.
+
+Introduction: 2/2
+Feedback: The introduction provides solid background on the problem of student dropout in higher education and motivates the use of machine learning approaches. Relevant prior work is referenced appropriately. The research questions are clearly stated.
+
+Methodology: 1/2
+Feedback: The methodology describes the dataset (Open University Learning Analytics Dataset, 32,593 students) and the models used (Random Forest, XGBoost, Logistic Regression). However, details on hyperparameter tuning are limited and the cross-validation strategy is only briefly mentioned. More detail on feature engineering would improve this section.
+
+Results: 2/2
+Feedback: Results are clearly presented with accuracy, precision, recall, and F1-scores for all models. Confusion matrices are included and the Random Forest model is correctly identified as the best performer. Statistical significance is acknowledged.
+
+Conclusion: 2/2
+Feedback: The conclusion summarises the key findings effectively and identifies practical implications for educational institutions. Limitations are acknowledged and future research directions are proposed.
+
+Literature Review: 3/3
+- ✅ 5/5 references verified in global databases.
+
+Document Quality: 3/7
+Section structure: 1/1
+  - All major sections are clearly present and properly titled.
+Font consistency: 1/1
+  - Professional and consistent font usage throughout.
+Line spacing: 1/1
+  - Line spacing is appropriate at 1.5x.
+Figures tables: 0/1
+  - ⚠ Tables are present but figures/graphs are missing. Visualisations of results would improve clarity.
+Blank pages: 0/1
+  - ⚠ One blank page detected between sections.
+Citations: 0/1
+  - ⚠ In-text citation format is inconsistent (mix of APA and IEEE).
+Page numbers: 0/1
+  - ⚠ No valid page numbers detected.

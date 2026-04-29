@@ -1,0 +1,5 @@
+Academic Report Evaluation Summary
+Domain: AI
+
+Abstract: AI is useful.
+Conclusion: AI is the future.

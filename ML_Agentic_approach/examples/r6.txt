@@ -1,0 +1,18 @@
+Academic Report Evaluation Summary
+Domain: Software Engineering
+
+Abstract:
+This project focuses on agile methodologies in software development.
+
+Methodology:
+We conducted case studies on companies using Scrum and Kanban. Data was collected through interviews and surveys.
+
+Results:
+Agile methods improved delivery speed by 30% and reduced bugs.
+
+Conclusion:
+Agile methodologies are effective for modern development.
+
+References:
+Scrum Guide
+Agile Manifesto

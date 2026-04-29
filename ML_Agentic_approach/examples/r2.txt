@@ -1,0 +1,18 @@
+Academic Report Evaluation Summary
+Domain: Machine Learning
+
+Abstract:
+This project explores the use of machine learning algorithms for predicting student performance. It uses classification models to determine outcomes.
+
+Methodology:
+We collected a dataset from Kaggle and applied preprocessing techniques. Models like Decision Tree and Logistic Regression were used. Accuracy was measured using train-test split.
+
+Results:
+The Decision Tree model achieved 78% accuracy while Logistic Regression achieved 74%.
+
+Conclusion:
+Machine learning models can help predict student performance, but results depend on data quality.
+
+References:
+Kaggle Dataset
+Research paper on ML models

@@ -1,0 +1,7 @@
+torch>=2.1
+transformers>=4.39
+safetensors>=0.4
+
+# Optional file-format support in evaluate_reports.py
+pypdf>=4.0
+python-docx>=1.1

@@ -1,0 +1,37 @@
+Academic Report Evaluation Summary
+Domain: Cybersecurity
+Total Score: 9/20
+
+Abstract: 1/2
+Feedback: The abstract is vague and does not clearly state the research problem or methodology. It mentions cybersecurity in general terms but lacks specifics about the contribution or findings.
+
+Introduction: 1/2
+Feedback: The introduction does not provide sufficient background on the problem. The motivation for the study is unclear and existing literature is not cited to support claims.
+
+Methodology: 0/2
+Feedback: No clear methodology is described. The report states that data was "collected from the internet" without specifying sources, tools, or experimental setup. The approach is not reproducible.
+
+Results: 1/2
+Feedback: Results are presented as vague statements ("attacks are increasing") without any supporting data, tables, metrics, or quantitative analysis. No comparison with baselines.
+
+Conclusion: 1/2
+Feedback: The conclusion does not summarise findings meaningfully. It simply restates that cybersecurity is important without addressing the research questions raised in the introduction.
+
+Literature Review: 1/3
+- ⚠ Only 1/5 references could be verified in global databases.
+
+Document Quality: 4/7
+Section structure: 1/1
+  - All major sections are present.
+Font consistency: 1/1
+  - Consistent font usage detected.
+Line spacing: 0/1
+  - ⚠ Line spacing appears inconsistent or too tight throughout the document.
+Figures tables: 0/1
+  - ⚠ No figures or tables found. Visual aids would strengthen the report.
+Blank pages: 1/1
+  - No unnecessary blank pages.
+Citations: 0/1
+  - ⚠ In-text citations are largely absent. Claims are unsupported.
+Page numbers: 1/1
+  - Page numbers detected.

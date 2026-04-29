@@ -1,0 +1,18 @@
+Academic Report Evaluation Summary
+Domain: Cybersecurity
+
+Abstract:
+This project is about cybersecurity and how attacks happen. There are many attacks like phishing and hacking. This report discusses some of them.
+
+Methodology:
+We searched on Google and collected some data. We also saw some YouTube videos and understood the topic.
+
+Results:
+We found that cybersecurity is important. Many companies face attacks and they lose data.
+
+Conclusion:
+Cybersecurity is very important in today's world.
+
+References:
+Google
+Wikipedia

@@ -1,0 +1,14 @@
+Academic Report Evaluation Summary
+Domain: Data Science
+
+Abstract:
+This report discusses data science applications in healthcare.
+
+Results:
+We observed improvements in diagnosis accuracy using ML models.
+
+Conclusion:
+Data science improves healthcare outcomes.
+
+References:
+Research articles

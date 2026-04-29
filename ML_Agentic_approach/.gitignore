@@ -1,0 +1,10 @@
+.venv
+models
+checkpoint-*
+__pycache__
+*.pyc
+frontend/node_modules
+frontend/.next
+downloads
+.env
+

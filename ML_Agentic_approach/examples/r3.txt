@@ -1,0 +1,18 @@
+Academic Report Evaluation Summary
+Domain: Artificial Intelligence
+
+Abstract:
+This project investigates transformer-based architectures for natural language understanding tasks, focusing on efficiency and accuracy trade-offs.
+
+Methodology:
+We implemented a BERT-based model and fine-tuned it on a sentiment analysis dataset. Hyperparameter tuning was performed using grid search. Evaluation metrics included accuracy, F1-score, and precision-recall curves.
+
+Results:
+The fine-tuned model achieved 92% accuracy and an F1-score of 0.91, outperforming baseline models.
+
+Conclusion:
+Transformer models significantly improve NLP task performance, though computational cost remains a concern.
+
+References:
+Devlin et al., BERT paper
+Stanford NLP resources
