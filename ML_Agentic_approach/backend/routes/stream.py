@@ -42,6 +42,7 @@ from flask import Blueprint, Response, current_app, request, stream_with_context
 from ..utils.text_processor import normalize_text, read_bytes_text
 from ..utils.report_parser import parse_report, parsed_report_to_dict
 from ..utils.diagram_extractor import extract_diagram_images
+from ..utils.pdf_highlights import extract_pdf_page_texts
 
 logger = logging.getLogger(__name__)
 stream_bp = Blueprint("stream", __name__)
@@ -54,6 +55,7 @@ STEP_MESSAGES = {
     "start":                   ("Initialising pipeline", "⚙️"),
     "roberta_inference":        ("RoBERTa classification complete", "🤖"),
     "attention_highlights":    ("Attention rollout — text highlights extracted", "🔦"),
+    "pdf_highlight_annotations": ("PDF highlight annotations prepared", "🖍️"),
     "agent_r1_AbstractAgent":  ("AbstractAgent evaluated abstract quality", "📝"),
     "agent_r1_MethodologyAgent": ("MethodologyAgent evaluated research design", "🔬"),
     "agent_r1_ResultsAgent":   ("ResultsAgent evaluated results & analysis", "📊"),
@@ -98,7 +100,7 @@ STEP_ORDER = [
     "cross_review_ResultsAgent", "cross_review_CitationAgent",
     "cross_review_DocumentStructureAgent", "cross_review_ContentDepthAgent",
     "cross_review_DiagramAgent", "cross_review_FormatterAgent",
-    "master_arbiter", "fol_verification", "xai_explanation", "complete",
+    "pdf_highlight_annotations", "master_arbiter", "fol_verification", "xai_explanation", "complete",
 ]
 TOTAL_STEPS = len(STEP_ORDER)
 
@@ -156,6 +158,8 @@ def evaluate_stream():
     report_text = ""
     filename = "stream_input.txt"
     diagram_images: list[str] = []
+    pdf_pages: list[str] = []
+    file_bytes: bytes | None = None
 
     if request.content_type and "multipart" in request.content_type:
         file = request.files.get("file")
@@ -172,6 +176,7 @@ def evaluate_stream():
         file_bytes = file.read()
         report_text = read_bytes_text(file_bytes, filename)
         diagram_images = extract_diagram_images(file_bytes, filename)
+        pdf_pages = extract_pdf_page_texts(file_bytes, filename)
         run_srlm = request.form.get("run_srlm", "true").lower() != "false"
         run_highlights = request.form.get("run_highlights", "true").lower() != "false"
         run_fol = request.form.get("run_fol", "true").lower() != "false"
@@ -191,6 +196,7 @@ def evaluate_stream():
         return Response(stream_with_context(_empty()), mimetype="text/event-stream")
 
     report_text = normalize_text(report_text)
+    upload_dir = current_app.config.get("UPLOAD_DIR", "uploads")
 
     # ── Run pipeline in thread, stream events via queue ──────────────────
     q: queue.Queue = queue.Queue()
@@ -207,6 +213,7 @@ def evaluate_stream():
 
             report_id = db.create_report(filename=filename, report_text=report_text)
             q.put(("report_id", report_id, {}))
+            pdf_url = _save_stream_pdf(report_id, file_bytes, filename, upload_dir)
 
             result = orchestrator.run(
                 report_text=report_text,
@@ -216,6 +223,7 @@ def evaluate_stream():
                 run_fol=run_fol,
                 run_xai=run_xai,
                 diagram_images=diagram_images,
+                pdf_pages=pdf_pages,
                 step_callback=_callback,
             )
 
@@ -267,6 +275,7 @@ def evaluate_stream():
                 "fol_result": result.get("fol_result", {}),
                 "thought_process": result.get("thought_process", []),
                 "pipeline_timeline": result.get("pipeline_timeline", []),
+                "pdf_url": pdf_url,
             }
             q.put(("result", full_result, {}))
         except Exception as exc:
@@ -323,3 +332,16 @@ def evaluate_stream():
             "X-Accel-Buffering": "no",  # disable nginx buffering if behind proxy
         },
     )
+
+
+def _save_stream_pdf(report_id: str, data: bytes | None, filename: str, upload_dir: str) -> str | None:
+    if not data or Path(filename).suffix.lower() != ".pdf":
+        return None
+    os.makedirs(upload_dir, exist_ok=True)
+    try:
+        with open(os.path.join(upload_dir, f"{report_id}.pdf"), "wb") as f:
+            f.write(data)
+        return f"/api/reports/{report_id}/pdf"
+    except Exception:
+        logger.exception("Failed to save stream PDF for highlighting")
+        return None

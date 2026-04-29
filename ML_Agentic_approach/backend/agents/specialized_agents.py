@@ -30,7 +30,18 @@ Return only valid JSON with exactly these keys:
   "pass/fail": "pass" or "fail",
   "issues": list of strings,
   "explanation": "concise evidence-based explanation",
-  "suggestions": list of strings
+  "suggestions": list of strings,
+  "highlight_annotations": [
+    {
+      "text_span": "exact nearby caption or text span",
+      "page_number": integer,
+      "issue_type": "diagram_issue"|"warning"|"good_sentence",
+      "severity": "low"|"medium"|"high",
+      "explanation": "why marked",
+      "suggestion": "actionable suggestion",
+      "score_impact": number from -10 to +10
+    }
+  ]
 }
 Pass requires score >= 6.0 and no severe correctness issue.
 """
@@ -60,6 +71,13 @@ def _normalise_compact_result(raw: Optional[Dict], agent_name: str) -> Dict:
     issues = raw.get("issues")
     suggestions = raw.get("suggestions")
     explanation = raw.get("explanation") or raw.get("reasoning") or ""
+    annotations = raw.get("highlight_annotations")
+    if isinstance(annotations, list):
+        annotations = [
+            {**item, "agent": item.get("agent") or agent_name}
+            for item in annotations
+            if isinstance(item, dict) and item.get("text_span")
+        ]
     return {
         "agent": agent_name,
         "round": 1,
@@ -76,6 +94,7 @@ def _normalise_compact_result(raw: Optional[Dict], agent_name: str) -> Dict:
         "strengths": raw.get("strengths", []) if isinstance(raw.get("strengths"), list) else [],
         "weaknesses": issues if isinstance(issues, list) else [],
         "recommendations": suggestions if isinstance(suggestions, list) else [],
+        "highlight_annotations": annotations if isinstance(annotations, list) else [],
     }
 
 
@@ -463,7 +482,18 @@ Return only valid JSON with exactly these keys:
   "pass/fail": "pass" or "fail",
   "issues": list of strings,
   "explanation": "concise evidence-based explanation",
-  "suggestions": list of strings
+  "suggestions": list of strings,
+  "highlight_annotations": [
+    {
+      "text_span": "exact text span from the report",
+      "page_number": integer,
+      "issue_type": "formatting_issue"|"warning"|"good_sentence",
+      "severity": "low"|"medium"|"high",
+      "explanation": "why marked",
+      "suggestion": "actionable suggestion",
+      "score_impact": number from -10 to +10
+    }
+  ]
 }
 Pass requires score >= 6.0.
 """

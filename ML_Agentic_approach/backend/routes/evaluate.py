@@ -18,6 +18,7 @@ from flask import Blueprint, current_app, jsonify, request
 from ..utils.text_processor import normalize_text, read_bytes_text
 from ..utils.report_parser import parse_report, parsed_report_to_dict
 from ..utils.diagram_extractor import extract_diagram_images
+from ..utils.pdf_highlights import extract_pdf_page_texts
 
 logger = logging.getLogger(__name__)
 evaluate_bp = Blueprint("evaluate", __name__)
@@ -43,12 +44,16 @@ def _run_pipeline(
     run_fol: bool,
     run_xai: bool,
     diagram_images: list[str] | None = None,
+    pdf_pages: list[str] | None = None,
+    original_file_bytes: bytes | None = None,
+    original_filename: str | None = None,
 ) -> Dict[str, Any]:
     """Execute the full analysis pipeline and persist to DB."""
     orchestrator, db = _get_services()
 
     # ── Persist initial record ────────────────────────────────────────────
     report_id = db.create_report(filename=filename, report_text=report_text)
+    pdf_url = _save_original_pdf(report_id, original_file_bytes, original_filename)
 
     try:
         # ── Parse structure ───────────────────────────────────────────────
@@ -65,6 +70,7 @@ def _run_pipeline(
             run_fol=run_fol,
             run_xai=run_xai,
             diagram_images=diagram_images,
+            pdf_pages=pdf_pages,
         )
         elapsed = round((time.time() - t0) * 1000)
 
@@ -124,12 +130,28 @@ def _run_pipeline(
             "fol_result": result.get("fol_result", {}),
             "thought_process": result.get("thought_process", []),
             "pipeline_timeline": result.get("pipeline_timeline", []),
+            "pdf_url": pdf_url,
         }
 
     except Exception as exc:
         logger.exception(f"Pipeline failed for report {report_id}: {exc}")
         db.update_report(report_id, {"status": "error"})
         raise
+
+
+def _save_original_pdf(report_id: str, data: bytes | None, filename: str | None) -> str | None:
+    if not data or not filename or Path(filename).suffix.lower() != ".pdf":
+        return None
+    upload_dir = current_app.config.get("UPLOAD_DIR", "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    save_path = os.path.join(upload_dir, f"{report_id}.pdf")
+    try:
+        with open(save_path, "wb") as f:
+            f.write(data)
+        return f"/api/reports/{report_id}/pdf"
+    except Exception:
+        logger.exception("Failed to save original PDF for highlighting")
+        return None
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -234,9 +256,13 @@ def evaluate_upload():
 
     normalized = normalize_text(text)
     diagram_images = extract_diagram_images(file_bytes, filename)
+    pdf_pages = extract_pdf_page_texts(file_bytes, filename)
 
     try:
-        result = _run_pipeline(normalized, filename, run_srlm, run_highlights, run_fol, run_xai, diagram_images)
+        result = _run_pipeline(
+            normalized, filename, run_srlm, run_highlights, run_fol, run_xai,
+            diagram_images, pdf_pages, file_bytes, filename
+        )
         return jsonify(result), 200
     except Exception as e:
         logger.exception("evaluate_upload failed")

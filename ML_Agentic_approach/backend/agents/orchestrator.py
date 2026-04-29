@@ -53,6 +53,7 @@ class AgentOrchestrator:
         run_fol: bool = True,
         run_xai: bool = True,
         diagram_images: Optional[List[str]] = None,
+        pdf_pages: Optional[List[str]] = None,
         step_callback=None,  # callable(event: str, data: dict) — for SSE streaming
     ) -> Dict[str, Any]:
         """
@@ -143,6 +144,15 @@ class AgentOrchestrator:
                 except Exception as e:
                     logger.warning(f"Cross-review failed for {agent.name}: {e}")
 
+        pdf_annotations: List[Dict] = []
+        if agent_evaluations:
+            from ..utils.pdf_highlights import build_pdf_annotations
+            pdf_annotations = build_pdf_annotations(agent_evaluations, report_text, pdf_pages)
+            if highlight_data is None:
+                highlight_data = {"highlighted_spans": [], "threshold": 0.5}
+            highlight_data["pdf_annotations"] = pdf_annotations
+            log_step("pdf_highlight_annotations", {"n_annotations": len(pdf_annotations)})
+
         # ── Step 6: Master Arbiter ────────────────────────────────────────
         unified_verdict: Dict = {}
         if run_srlm:
@@ -232,6 +242,7 @@ class AgentOrchestrator:
         return {
             "roberta_result": roberta_result,
             "highlight_data": highlight_data,
+            "pdf_annotations": pdf_annotations,
             "agent_evaluations": agent_evaluations,
             "self_reward_scores": self_reward_scores,
             "cross_reviews": cross_reviews,

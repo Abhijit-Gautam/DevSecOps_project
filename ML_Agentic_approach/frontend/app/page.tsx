@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
-import { API_ENDPOINTS } from '@/lib/config'
+import { API_BASE_URL, API_ENDPOINTS } from '@/lib/config'
 import type { PipelineProgressEvent, ReportResponse } from '@/lib/types'
 import UploadSection, { type UploadOptions } from '@/components/upload-section'
 import ProcessingScreen from '@/components/processing-screen'
@@ -115,6 +115,7 @@ function toReportResponseFromStored(report: any, fallbackReportId?: string): Rep
     cross_reviews: srlmResults?.cross_reviews ?? [],
     highlight_data: {
       highlighted_spans: highlights?.highlighted_spans ?? [],
+      pdf_annotations: highlights?.pdf_annotations ?? [],
       threshold: typeof highlights?.threshold === 'number' ? highlights.threshold : 0.5,
       total_tokens: tokens.length,
     },
@@ -122,6 +123,12 @@ function toReportResponseFromStored(report: any, fallbackReportId?: string): Rep
     fol_result: report?.fol_verification ?? {},
     thought_process: report?.thought_process ?? [],
     pipeline_timeline: report?.pipeline_timeline ?? [],
+    pdf_url:
+      typeof report?.pdf_url === 'string'
+        ? report.pdf_url
+        : report?.filename?.toLowerCase?.().endsWith('.pdf')
+        ? `/api/reports/${report?.report_id ?? fallbackReportId}/pdf`
+        : null,
   }
 }
 
@@ -378,6 +385,14 @@ export default function Home() {
               <HighlightsViewer
                 text={reportData.parsed_data.report_text || 'Report text not available'}
                 highlightedSpans={reportData.highlight_data.highlighted_spans || []}
+                pdfAnnotations={reportData.highlight_data.pdf_annotations || []}
+                pdfUrl={
+                  reportData.pdf_url
+                    ? reportData.pdf_url.startsWith('http')
+                      ? reportData.pdf_url
+                      : `${API_BASE_URL}${reportData.pdf_url}`
+                    : null
+                }
                 threshold={reportData.highlight_data.threshold || 0.5}
               />
             )}

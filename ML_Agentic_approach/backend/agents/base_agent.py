@@ -19,6 +19,20 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
+HIGHLIGHT_SCHEMA_INSTRUCTION = """
+Also return "highlight_annotations": a list of up to 5 objects for PDF attention highlighting.
+Include bad/weak sentences and good/strong sentences when present.
+Each object must include:
+  "text_span": exact sentence or phrase from the report,
+  "page_number": integer page number if known, otherwise 1,
+  "issue_type": "bad_sentence"|"good_sentence"|"formatting_issue"|"diagram_issue"|"warning",
+  "severity": "low"|"medium"|"high",
+  "explanation": why it was marked,
+  "suggestion": concrete improvement or reinforcement,
+  "score_impact": numeric impact from -10 to +10.
+Use exact report wording for text_span so the UI can align highlights.
+"""
+
 
 SELF_REWARD_SYSTEM_PROMPT = """
 You are an expert evaluator assessing the quality of an academic evaluation.
@@ -70,6 +84,9 @@ class BaseAgent:
         for field in ("strengths", "weaknesses", "evidence", "recommendations", "issues", "suggestions"):
             val = raw.get(field)
             raw[field] = val if isinstance(val, list) else []
+        raw["highlight_annotations"] = self._normalise_highlight_annotations(
+            raw.get("highlight_annotations")
+        )
 
         raw["agent"] = self.name
         raw["round"] = 1
@@ -157,12 +174,38 @@ You focus on: {', '.join(self.focus_areas)}
 
 Analyse academic research reports objectively. Be specific, cite text evidence.
 Always return valid JSON as instructed. Be precise and analytical.
+{self._highlight_instruction()}
 """
 
     def _build_evaluation_prompt(
         self, report_text: str, parsed_data: Dict, context: Dict
     ) -> str:
         raise NotImplementedError
+
+    def _highlight_instruction(self) -> str:
+        return HIGHLIGHT_SCHEMA_INSTRUCTION
+
+    def _normalise_highlight_annotations(self, annotations: Any) -> List[Dict[str, Any]]:
+        if not isinstance(annotations, list):
+            return []
+        normalised = []
+        for item in annotations[:8]:
+            if not isinstance(item, dict):
+                continue
+            text_span = str(item.get("text_span") or item.get("exact_text_span") or "").strip()
+            if not text_span:
+                continue
+            normalised.append({
+                "text_span": text_span,
+                "page_number": int(item.get("page_number") or item.get("page") or 1),
+                "issue_type": str(item.get("issue_type") or "warning"),
+                "severity": str(item.get("severity") or "medium"),
+                "explanation": str(item.get("explanation") or ""),
+                "suggestion": str(item.get("suggestion") or ""),
+                "score_impact": float(item.get("score_impact") or 0),
+                "agent": self.name,
+            })
+        return normalised
 
     def _fallback_evaluation(self, report_text: str, parsed_data: Optional[Dict]) -> Dict:
         return {
@@ -174,4 +217,5 @@ Always return valid JSON as instructed. Be precise and analytical.
             "strengths": [],
             "weaknesses": [],
             "recommendations": [],
+            "highlight_annotations": [],
         }

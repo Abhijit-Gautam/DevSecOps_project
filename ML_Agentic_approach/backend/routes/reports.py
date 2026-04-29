@@ -14,8 +14,10 @@ GET    /api/reports/<id>/xai             — XAI explanation details
 from __future__ import annotations
 
 import logging
+import os
+from pathlib import Path
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, request, send_file
 
 logger = logging.getLogger(__name__)
 reports_bp = Blueprint("reports", __name__)
@@ -80,6 +82,9 @@ def get_report(report_id: str):
     if not report:
         return jsonify({"error": f"Report '{report_id}' not found."}), 404
 
+    if _pdf_exists(report_id):
+        report["pdf_url"] = f"/api/reports/{report_id}/pdf"
+
     # Strip raw report text from summary view unless explicitly requested
     include_text = request.args.get("include_text", "false").lower() == "true"
     if not include_text and "report_text" in report:
@@ -133,6 +138,7 @@ def get_highlights(report_id: str):
         "report_id": report_id,
         "predicted_label": report.get("predicted_label"),
         "highlighted_spans": highlights.get("highlighted_spans", []),
+        "pdf_annotations": highlights.get("pdf_annotations", []),
         "threshold": highlights.get("threshold"),
         "total_tokens": len(highlights.get("tokens", [])),
         "mapped_evidence": xai.get("highlighted_evidence", []),
@@ -274,3 +280,35 @@ def get_report_text(report_id: str):
         "word_count": len(text.split()),
         "char_count": len(text),
     })
+
+
+@reports_bp.route("/<report_id>/pdf", methods=["GET"])
+def get_report_pdf(report_id: str):
+    """Serve the original uploaded PDF for overlay highlighting."""
+    db = _db()
+    report = db.get_report(report_id)
+    if not report:
+        return jsonify({"error": f"Report '{report_id}' not found."}), 404
+
+    pdf_path = _pdf_path(report_id)
+    if not pdf_path:
+        return jsonify({"error": "Original PDF not available for this report."}), 404
+
+    return send_file(
+        os.fspath(pdf_path),
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=f"{report_id}.pdf",
+    )
+
+
+def _pdf_path(report_id: str) -> Path | None:
+    upload_dir = Path(current_app.config.get("UPLOAD_DIR", "uploads")).resolve()
+    pdf_path = (upload_dir / f"{report_id}.pdf").resolve()
+    if upload_dir not in pdf_path.parents or not pdf_path.exists():
+        return None
+    return pdf_path
+
+
+def _pdf_exists(report_id: str) -> bool:
+    return _pdf_path(report_id) is not None

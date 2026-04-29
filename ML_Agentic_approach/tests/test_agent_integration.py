@@ -42,6 +42,15 @@ class FakeOllama:
                 "issues": [],
                 "explanation": "Formatting is consistent.",
                 "suggestions": [],
+                "highlight_annotations": [{
+                    "text_span": "Abstract: 8/10",
+                    "page_number": 1,
+                    "issue_type": "good_sentence",
+                    "severity": "low",
+                    "explanation": "Clear section score.",
+                    "suggestion": "Keep this formatting.",
+                    "score_impact": 2,
+                }],
             }
         return {
             "verdict": "Good",
@@ -73,6 +82,15 @@ class FakeGroqVLM:
             "issues": [],
             "explanation": "Diagrams are relevant, clear, labeled, and useful.",
             "suggestions": [],
+            "highlight_annotations": [{
+                "text_span": "Figures: 1/1",
+                "page_number": 1,
+                "issue_type": "diagram_issue",
+                "severity": "low",
+                "explanation": "Diagram evidence is present.",
+                "suggestion": "Keep labels visible.",
+                "score_impact": 1,
+            }],
         }
 
 
@@ -117,6 +135,7 @@ class AgentIntegrationTests(unittest.TestCase):
         self.assertIn("FormatterAgent", reviewers)
         self.assertEqual(len(groq.calls), 1)
         self.assertEqual(groq.calls[0]["image_urls"], ["data:image/png;base64,abc"])
+        self.assertGreaterEqual(len(result["highlight_data"]["pdf_annotations"]), 2)
 
 
 if __name__ == "__main__":

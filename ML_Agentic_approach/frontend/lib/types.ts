@@ -50,8 +50,27 @@ export interface HighlightSpan {
   score: number
 }
 
+export interface PdfAnnotation {
+  text_span: string
+  page_number: number
+  issue_type: string
+  severity: 'low' | 'medium' | 'high' | string
+  explanation: string
+  suggestion: string
+  score_impact: number
+  agent?: string
+  color: 'red' | 'green' | 'yellow' | string
+  rect?: {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
+}
+
 export interface HighlightData {
   highlighted_spans: HighlightSpan[]
+  pdf_annotations?: PdfAnnotation[]
   threshold: number
   total_tokens: number
   mapped_evidence?: Array<{
@@ -212,6 +231,7 @@ export interface ReportResponse {
   fol_result: FOLResult
   thought_process: ThoughtStep[]
   pipeline_timeline: PipelineTimeline[]
+  pdf_url?: string | null
 }
 
 export interface ApiError {
